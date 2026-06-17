@@ -5,7 +5,7 @@ export const PARKING_SLOTS: ParkingSlot[] = [
     id: '1',
     name: 'UR CST Parking',
     availableSlots: 15,
-    totalSlots: 50,
+    totalSlots: 10,
     location: { lat: -1.9546, lng: 30.0912 },
     address: 'KG 7 Ave, Kigali',
     googleMapsUrl: 'https://maps.app.goo.gl/TPPwzo5BDz79ard49',
