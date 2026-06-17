@@ -9,7 +9,7 @@ export const PARKING_SLOTS: ParkingSlot[] = [
     location: { lat: -1.9546, lng: 30.0912 },
     address: 'KG 7 Ave, Kigali',
     googleMapsUrl: 'https://maps.app.goo.gl/TPPwzo5BDz79ard49',
-    image: 'https://picsum.photos/seed/kigaliheights/800/600',
+    image: 'https://share.google/uNxLEF3bz6k4qavhp',
     operatingHours: '24/7',
     pricing: '500 RWF / Hour'
   },
