@@ -1,0 +1,5 @@
+{
+  "name": "ConnectToPark Rwanda",
+  "description": "A smart parking system for Rwanda, providing real-time availability and location mapping for parking slots.",
+  "requestFramePermissions": ["geolocation"]
+}
