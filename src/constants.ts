@@ -21,7 +21,7 @@ export const PARKING_SLOTS: ParkingSlot[] = [
     location: { lat: -1.9441, lng: 30.0619 },
     address: 'KN 4 Ave, Kigali',
     googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=-1.9441,30.0619',
-    image: '/M_Peace_Plaza_image.jpg',
+    image: '/makuza_picture.jpeg',
     operatingHours: '06:00 AM - 11:00 PM',
     pricing: '400 RWF / Hour'
   },
@@ -57,7 +57,7 @@ export const PARKING_SLOTS: ParkingSlot[] = [
     location: { lat: -1.9517, lng: 30.0935 },
     address: 'KG 2 Rd, Kigali',
     googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=-1.9517,30.0935',
-    image: '/Kigali_Convention_Centre_image.jpg',
+    image: '/Kigali_convention_image.jpg',
     operatingHours: '24/7',
     pricing: '1000 RWF / Hour'
   }
