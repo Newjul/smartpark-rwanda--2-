@@ -3,12 +3,12 @@ import { ParkingSlot } from './types';
 export const PARKING_SLOTS: ParkingSlot[] = [
   {
     id: '1',
-    name: 'Kigali Heights',
+    name: 'UR CST Parking',
     availableSlots: 15,
     totalSlots: 50,
     location: { lat: -1.9546, lng: 30.0912 },
     address: 'KG 7 Ave, Kigali',
-    googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=-1.9546,30.0912',
+    googleMapsUrl: 'https://maps.app.goo.gl/TPPwzo5BDz79ard49',
     image: 'https://picsum.photos/seed/kigaliheights/800/600',
     operatingHours: '24/7',
     pricing: '500 RWF / Hour'
