@@ -88,7 +88,7 @@ export default function App() {
     };
 
     fetchStatus();
-    const interval = setInterval(fetchStatus, 15000);
+    const interval = setInterval(fetchStatus, 8000);
     return () => clearInterval(interval);
   }, []);
 
