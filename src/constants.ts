@@ -4,7 +4,7 @@ export const PARKING_SLOTS: ParkingSlot[] = [
   {
     id: '1',
     name: 'UR CST Parking',
-    availableSlots: 15,
+    availableSlots: 11,
     totalSlots: 10,
     location: { lat: -1.9546, lng: 30.0912 },
     address: 'KG 7 Ave, Kigali',
