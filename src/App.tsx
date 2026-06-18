@@ -21,11 +21,20 @@ import { ParkingSlot } from './types';
 
 type Page = 'home' | 'portal';
 
+// The id of the single slot whose availability is fetched live from the backend API.
+// This used to be labeled "Kigali Heights" in the API/older code; it now corresponds
+// to "UR CST Parking" in PARKING_SLOTS, but the id has stayed "1" on both sides.
+const LIVE_SLOT_ID = '1';
+
 export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>('home');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<ParkingSlot | null>(null);
   const [slots, setSlots] = useState<ParkingSlot[]>(PARKING_SLOTS);
+  // True until the first fetch attempt (success OR failure) has completed.
+  // While true, the live slot's numbers are hidden behind a skeleton instead of
+  // showing the static default from constants.ts.
+  const [isLiveDataLoading, setIsLiveDataLoading] = useState(true);
 
   useEffect(() => {
     const fetchStatus = async () => {
@@ -33,35 +42,32 @@ export default function App() {
         const response = await fetch('https://connecttopark.onrender.com/api/parking/status');
         if (!response.ok) throw new Error('Network response was not ok');
         const data = await response.json();
-        
+
         let fetchedAvailable: number | null = null;
-        
+
         if (data) {
           if (Array.isArray(data)) {
-            const kigaliHeights = data.find(item => 
-              item && typeof item === 'object' && 
-              (String(item.name).toLowerCase().includes('kigali heights') || String(item.id) === '1')
+            const liveSlotData = data.find(item =>
+              item && typeof item === 'object' && String(item.id) === LIVE_SLOT_ID
             );
-            if (kigaliHeights) {
-              if (typeof kigaliHeights.availableSlots === 'number') fetchedAvailable = kigaliHeights.availableSlots;
-              else if (typeof kigaliHeights.available === 'number') fetchedAvailable = kigaliHeights.available;
-              else if (typeof kigaliHeights.slots_available === 'number') fetchedAvailable = kigaliHeights.slots_available;
+            if (liveSlotData) {
+              if (typeof liveSlotData.availableSlots === 'number') fetchedAvailable = liveSlotData.availableSlots;
+              else if (typeof liveSlotData.available === 'number') fetchedAvailable = liveSlotData.available;
+              else if (typeof liveSlotData.slots_available === 'number') fetchedAvailable = liveSlotData.slots_available;
             }
           } else if (typeof data === 'object') {
             if (typeof data.availableSlots === 'number') fetchedAvailable = data.availableSlots;
             else if (typeof data.available === 'number') fetchedAvailable = data.available;
             else if (typeof data.slots_available === 'number') fetchedAvailable = data.slots_available;
-            else if (data.slots && typeof data.slots.kigaliHeights === 'object') {
-              const kh = data.slots.kigaliHeights;
-              if (typeof kh.availableSlots === 'number') fetchedAvailable = kh.availableSlots;
-              else if (typeof kh.available === 'number') fetchedAvailable = kh.available;
-            } else if (data.slots && typeof data.slots.kigali_heights === 'object') {
-              const kh = data.slots.kigali_heights;
-              if (typeof kh.availableSlots === 'number') fetchedAvailable = kh.availableSlots;
-              else if (typeof kh.available === 'number') fetchedAvailable = kh.available;
+            else if (data.slots && typeof data.slots === 'object') {
+              const nested = data.slots[LIVE_SLOT_ID];
+              if (nested && typeof nested === 'object') {
+                if (typeof nested.availableSlots === 'number') fetchedAvailable = nested.availableSlots;
+                else if (typeof nested.available === 'number') fetchedAvailable = nested.available;
+              }
             } else {
               for (const key of Object.keys(data)) {
-                if (key.toLowerCase().includes('kigali') && typeof data[key] === 'object' && data[key] !== null) {
+                if (key === LIVE_SLOT_ID && typeof data[key] === 'object' && data[key] !== null) {
                   const nested = data[key];
                   if (typeof nested.availableSlots === 'number') fetchedAvailable = nested.availableSlots;
                   else if (typeof nested.available === 'number') fetchedAvailable = nested.available;
@@ -72,18 +78,20 @@ export default function App() {
             fetchedAvailable = data;
           }
         }
-        
+
         if (fetchedAvailable !== null && !isNaN(fetchedAvailable)) {
-          setSlots(prevSlots => 
-            prevSlots.map(slot => 
-              slot.id === '1' || slot.name === 'Kigali Heights' 
-                ? { ...slot, availableSlots: fetchedAvailable! } 
+          setSlots(prevSlots =>
+            prevSlots.map(slot =>
+              slot.id === LIVE_SLOT_ID
+                ? { ...slot, availableSlots: fetchedAvailable! }
                 : slot
             )
           );
         }
       } catch (err) {
         console.error('Error fetching parking status:', err);
+      } finally {
+        setIsLiveDataLoading(false);
       }
     };
 
@@ -324,86 +332,100 @@ export default function App() {
                   <p className="text-slate-600 mt-2">Real-time availability across Kigali's major hubs.</p>
                 </div>
                 <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <span className="text-sm font-medium text-slate-600">Live Updates Enabled</span>
+                  <div className={`w-2 h-2 rounded-full ${isLiveDataLoading ? 'bg-amber-500' : 'bg-green-500'} animate-pulse`}></div>
+                  <span className="text-sm font-medium text-slate-600">
+                    {isLiveDataLoading ? 'Connecting to live data...' : 'Live Updates Enabled'}
+                  </span>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {slots.map((slot) => (
-                  <motion.div
-                    key={slot.id}
-                    layout
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    whileHover={{ y: -8 }}
-                    onClick={() => setSelectedSlot(slot)}
-                    className="bg-white rounded-3xl overflow-hidden border border-slate-200 shadow-sm hover:shadow-xl transition-all cursor-pointer group"
-                  >
-                    <div className="h-48 relative overflow-hidden">
-                      <img 
-                        src={slot.image} 
-                        alt={slot.name} 
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        referrerPolicy="no-referrer"
-                      />
-                      <div className="absolute top-4 right-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold shadow-sm">
-                        {slot.totalSlots} Total Slots
-                      </div>
-                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <span className="bg-white text-slate-900 px-4 py-2 rounded-full text-sm font-bold shadow-lg">View Details</span>
-                      </div>
-                    </div>
-                    <div className="p-6">
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <h3 className="text-xl font-bold text-slate-900">{slot.name}</h3>
-                          <div className="flex items-center text-slate-500 text-sm mt-1">
-                            <MapPin className="w-3 h-3 mr-1" />
-                            {slot.address}
-                          </div>
-                        </div>
-                        <div className={`px-3 py-1 rounded-lg text-sm font-bold ${
-                          slot.availableSlots > 10 ? 'bg-green-50 text-green-700' : 'bg-orange-50 text-orange-700'
-                        }`}>
-                          {slot.availableSlots} Available
-                        </div>
-                      </div>
+                {slots.map((slot) => {
+                  const showSkeleton = slot.id === LIVE_SLOT_ID && isLiveDataLoading;
 
-                      <div className="w-full bg-slate-100 h-2 rounded-full mb-6 overflow-hidden">
-                        <motion.div 
-                          initial={{ width: 0 }}
-                          animate={{ width: `${(slot.availableSlots / slot.totalSlots) * 100}%` }}
-                          className={`h-full rounded-full ${
-                            slot.availableSlots > 10 ? 'bg-green-500' : 'bg-orange-500'
-                          }`}
+                  return (
+                    <motion.div
+                      key={slot.id}
+                      layout
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      whileHover={{ y: -8 }}
+                      onClick={() => setSelectedSlot(slot)}
+                      className="bg-white rounded-3xl overflow-hidden border border-slate-200 shadow-sm hover:shadow-xl transition-all cursor-pointer group"
+                    >
+                      <div className="h-48 relative overflow-hidden">
+                        <img 
+                          src={slot.image} 
+                          alt={slot.name} 
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          referrerPolicy="no-referrer"
                         />
+                        <div className="absolute top-4 right-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold shadow-sm">
+                          {slot.totalSlots} Total Slots
+                        </div>
+                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <span className="bg-white text-slate-900 px-4 py-2 rounded-full text-sm font-bold shadow-lg">View Details</span>
+                        </div>
                       </div>
+                      <div className="p-6">
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <h3 className="text-xl font-bold text-slate-900">{slot.name}</h3>
+                            <div className="flex items-center text-slate-500 text-sm mt-1">
+                              <MapPin className="w-3 h-3 mr-1" />
+                              {slot.address}
+                            </div>
+                          </div>
+                          {showSkeleton ? (
+                            <div className="w-28 h-7 rounded-lg bg-slate-100 animate-pulse" />
+                          ) : (
+                            <div className={`px-3 py-1 rounded-lg text-sm font-bold ${
+                              slot.availableSlots > 10 ? 'bg-green-50 text-green-700' : 'bg-orange-50 text-orange-700'
+                            }`}>
+                              {slot.availableSlots} Available
+                            </div>
+                          )}
+                        </div>
 
-                      <div className="flex items-center gap-3">
-                        <a 
-                          href={slot.googleMapsUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="flex-1 bg-slate-900 text-white py-3 rounded-xl font-bold flex items-center justify-center hover:bg-slate-800 transition-all group/btn"
-                        >
-                          <Navigation className="w-4 h-4 mr-2 group-hover/btn:rotate-12 transition-transform" />
-                          Directions
-                        </a>
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedSlot(slot);
-                          }}
-                          className="p-3 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-all"
-                        >
-                          <Info className="w-5 h-5" />
-                        </button>
+                        <div className="w-full bg-slate-100 h-2 rounded-full mb-6 overflow-hidden">
+                          {showSkeleton ? (
+                            <div className="h-full w-full bg-slate-200 animate-pulse rounded-full" />
+                          ) : (
+                            <motion.div 
+                              initial={{ width: 0 }}
+                              animate={{ width: `${(slot.availableSlots / slot.totalSlots) * 100}%` }}
+                              className={`h-full rounded-full ${
+                                slot.availableSlots > 10 ? 'bg-green-500' : 'bg-orange-500'
+                              }`}
+                            />
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <a 
+                            href={slot.googleMapsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex-1 bg-slate-900 text-white py-3 rounded-xl font-bold flex items-center justify-center hover:bg-slate-800 transition-all group/btn"
+                          >
+                            <Navigation className="w-4 h-4 mr-2 group-hover/btn:rotate-12 transition-transform" />
+                            Directions
+                          </a>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedSlot(slot);
+                            }}
+                            className="p-3 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-all"
+                          >
+                            <Info className="w-5 h-5" />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  </motion.div>
-                ))}
+                    </motion.div>
+                  );
+                })}
               </div>
             </motion.div>
           )}
@@ -450,11 +472,15 @@ export default function App() {
                       {currentModalSlot.address}
                     </p>
                   </div>
-                  <div className={`px-4 py-2 rounded-xl text-sm font-bold ${
-                    currentModalSlot.availableSlots > 10 ? 'bg-green-50 text-green-700' : 'bg-orange-50 text-orange-700'
-                  }`}>
-                    {currentModalSlot.availableSlots} / {currentModalSlot.totalSlots} Slots
-                  </div>
+                  {currentModalSlot.id === LIVE_SLOT_ID && isLiveDataLoading ? (
+                    <div className="w-32 h-9 rounded-xl bg-slate-100 animate-pulse" />
+                  ) : (
+                    <div className={`px-4 py-2 rounded-xl text-sm font-bold ${
+                      currentModalSlot.availableSlots > 10 ? 'bg-green-50 text-green-700' : 'bg-orange-50 text-orange-700'
+                    }`}>
+                      {currentModalSlot.availableSlots} / {currentModalSlot.totalSlots} Slots
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 mb-8">
